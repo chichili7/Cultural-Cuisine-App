@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Cultural Cuisine App</string>
+    <string name="drawer_open">Navigation drawer open</string>
+    <string name="drawer_close">Navigation drawer closed</string>
+    <string name="Recipes">Recipes</string>
+    <string name="Languages">Languages</string>
+    <string name="clear_all">Clear All</string>
+    <string name="Restaurants">Restaurants</string>
 </resources>

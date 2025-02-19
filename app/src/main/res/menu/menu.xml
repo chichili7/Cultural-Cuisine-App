@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/recipes_btn"
+        android:title="@string/Recipes">
+        <menu />
+    </item>
+    <item
+        android:id="@+id/languages_btn"
+        android:title="@string/Languages">
+        <menu />
+    </item>
+    <item
+        android:id="@+id/restaurants_btn"
+        android:title="@string/Restaurants">
+        <menu />
+    </item>
+</menu>
