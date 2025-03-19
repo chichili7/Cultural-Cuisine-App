@@ -64,8 +64,6 @@ public class SearchActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-
-        // Setup bottom navigation
         BottomNavigationView bottomNavigationView = binding.bottomNavigationView;
         bottomNavigationView.setOnItemSelectedListener(item -> {
             if (item.getItemId() == R.id.nav_home) {
@@ -84,23 +82,16 @@ public class SearchActivity extends AppCompatActivity {
             }
             return false;
         });
-
-        // Initialize search bar
         TextInputLayout searchInputLayout = findViewById(R.id.searchbar);
         searchEditText = (TextInputEditText) searchInputLayout.getEditText();
         setupSearch();
-
-        // Initialize RecyclerView
         recipeInfoList = new ArrayList<>();
         filteredRecipeList = new ArrayList<>();
         recyclerView = binding.rvCuisines;
         recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
 
-        // Initialize adapter
         recipeAdapter = new RecipeAdapter(this, filteredRecipeList);
         recyclerView.setAdapter(recipeAdapter);
-
-        // Load recipes based on cuisine
         String cuisineName = getIntent().getStringExtra("CUISINE_NAME");
         if (cuisineName != null && !cuisineName.isEmpty()) {
             searchRecipesByCuisine(cuisineName);
@@ -130,25 +121,19 @@ public class SearchActivity extends AppCompatActivity {
         searchEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                // Not needed
             }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // Filter recipes as text changes
                 filterRecipes(s.toString());
             }
 
             @Override
             public void afterTextChanged(Editable s) {
-                // Not needed
             }
         });
-
-        // Set action listener for the keyboard search button
         searchEditText.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                // Hide keyboard when search is pressed
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
                 return true;
@@ -161,10 +146,8 @@ public class SearchActivity extends AppCompatActivity {
         filteredRecipeList.clear();
 
         if (query.isEmpty()) {
-            // If query is empty, show all recipes
             filteredRecipeList.addAll(recipeInfoList);
         } else {
-            // Filter recipes based on query
             String lowerCaseQuery = query.toLowerCase();
             for (RecipeInfo recipe : recipeInfoList) {
                 if (recipe.getTitle().toLowerCase().contains(lowerCaseQuery)) {
@@ -172,8 +155,6 @@ public class SearchActivity extends AppCompatActivity {
                 }
             }
         }
-
-        // Update the adapter
         recipeAdapter.notifyDataSetChanged();
     }
     public void searchRecipesByCuisine(String cuisineName) {
@@ -246,7 +227,7 @@ public class SearchActivity extends AppCompatActivity {
     }
     private void showUserId() {
 
-        String userId = "User12345"; // Replace with actual user ID from authentication
+        String userId = "User12345";
         Toast.makeText(this, "User ID: " + userId, Toast.LENGTH_LONG).show();
     }
 

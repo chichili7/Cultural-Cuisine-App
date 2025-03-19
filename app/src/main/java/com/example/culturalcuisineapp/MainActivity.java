@@ -1,50 +1,39 @@
 package com.example.culturalcuisineapp;
 
+import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
-import android.content.res.Configuration;
+import android.content.SharedPreferences;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
-import android.view.Menu;
+import android.util.Patterns;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ArrayAdapter;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.PopupMenu;
 import android.widget.Toast;
-
-import androidx.activity.EdgeToEdge;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.android.volley.AuthFailureError;
-import com.android.volley.DefaultRetryPolicy;
-import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.toolbox.JsonArrayRequest;
-import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.Volley;
 import com.example.culturalcuisineapp.databinding.ActivityMainBinding;
+import com.example.culturalcuisineapp.databinding.LoginDialogBinding;
+import com.example.culturalcuisineapp.databinding.RegristrationDialogBinding;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -54,6 +43,17 @@ public class MainActivity extends AppCompatActivity {
     private List<CuisineInfo> cuisineInfoList;
     private RecyclerView recyclerView;
     private CuisineAdapter cuisineAdapter;
+    private SharedPreferences pref;
+    private static final String FILE_NAME = "details";
+    private static final String USER_NAME = "user";
+    private static final String PASSWORD = "pass";
+    private static final String REMEMBER_CREDENTIALS = "remember_credentials";
+    private String firstName;
+    private String lastName;
+    private String email;
+    private String userName;
+    private String password;
+    private static final String IS_LOGGED_IN = "is_logged_in";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,10 +66,8 @@ public class MainActivity extends AppCompatActivity {
             return insets;
 
         });
-        // In your Application class or MainActivity.onCreate
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = 2; // Load images at half the resolution to save memory
-
+        options.inSampleSize = 2;
         BottomNavigationView bottomNavigationView = binding.bottomNavigationView;
         bottomNavigationView.setOnItemSelectedListener(item -> {
 
@@ -88,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
             }
             return true;
         });
+        initializeSecureSharedPreferences();
         binding.btnNearby.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, NearbyRestaurantsActivity.class);
             startActivity(intent);
@@ -99,7 +98,209 @@ public class MainActivity extends AppCompatActivity {
 
         cuisineAdapter = new CuisineAdapter(this,cuisineInfoList);
         recyclerView.setAdapter(cuisineAdapter);
-        loadHardcodedCuisines();
+        boolean isLoggedIn = pref.getBoolean(IS_LOGGED_IN, false);
+        if (isLoggedIn) {
+            binding.main.setVisibility(View.VISIBLE);
+            loadHardcodedCuisines();
+        } else {
+            showLoginDialog();
+            loadHardcodedCuisines();
+        }
+    }
+
+    private void initializeSecureSharedPreferences() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                pref = getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE);
+            } else {
+                pref = getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing secure SharedPreferences: " + e.getMessage());
+            pref = getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE);
+        }
+    }
+
+    private void showLoginDialog() {
+        binding.main.setVisibility(View.GONE);
+        Dialog loginDialog = new Dialog(this);
+        loginDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LoginDialogBinding dialogBinding = LoginDialogBinding.inflate(getLayoutInflater());
+        loginDialog.setContentView(dialogBinding.getRoot());
+
+        WindowManager.LayoutParams params = loginDialog.getWindow().getAttributes();
+        params.width = (int) (getResources().getDisplayMetrics().widthPixels * 0.95);
+        loginDialog.getWindow().setAttributes(params);
+        loginDialog.setCancelable(false);
+
+        loadSavedCredentials(dialogBinding);
+
+        dialogBinding.login.setOnClickListener(view -> {
+            userName = dialogBinding.usernameText.getText().toString().trim();
+            String password = dialogBinding.passwordText.getText().toString().trim();
+            boolean saveCredentials = dialogBinding.saveCredentials.isChecked();
+
+            if (userName.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please enter both username and password", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            new Thread(() -> {
+                if (saveCredentials) {
+                    saveCredentials(userName, password);
+                } else {
+                    clearSavedCredentials();
+                }
+                runOnUiThread(() -> {
+                    VerifyCredentials credentialsCheckerAPIVolley = new VerifyCredentials(MainActivity.this);
+                    credentialsCheckerAPIVolley.checkCredentials(userName, password);
+                    loginDialog.dismiss();
+                });
+            }).start();
+        });
+        dialogBinding.register.setOnClickListener(view -> {
+            loginDialog.dismiss();
+            showRegisterDialog();
+        });
+        dialogBinding.cancel.setOnClickListener(view -> {
+            loginDialog.dismiss();
+        });
+        loginDialog.show();
+    }
+
+    private void saveCredentials(String username, String password) {
+        try {
+            SharedPreferences.Editor editor = pref.edit();
+            editor.putBoolean(REMEMBER_CREDENTIALS, true);
+            editor.putString(USER_NAME, username);
+            editor.putString(PASSWORD, password);
+            editor.apply();
+            Log.d(TAG, "Credentials saved for user: " + username);
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving credentials: " + e.getMessage());
+        }
+    }
+
+    private void loadSavedCredentials(LoginDialogBinding dialogBinding) {
+        if (pref.contains(USER_NAME) && pref.contains(PASSWORD) && pref.getBoolean(REMEMBER_CREDENTIALS, false)) {
+            String savedUsername = pref.getString(USER_NAME, "");
+            String savedPassword = pref.getString(PASSWORD, "");
+            if (!savedUsername.isEmpty() && !savedPassword.isEmpty()) {
+                dialogBinding.usernameText.setText(savedUsername);
+                dialogBinding.passwordText.setText(savedPassword);
+                dialogBinding.saveCredentials.setChecked(true);
+            }
+        }
+    }
+
+    private void clearSavedCredentials() {
+        try {
+            SharedPreferences.Editor editor = pref.edit();
+            editor.putBoolean(REMEMBER_CREDENTIALS, false);
+            editor.remove(USER_NAME);
+            editor.remove(PASSWORD);
+            editor.apply();
+        } catch (Exception e) {
+            Log.e(TAG, "Error clearing credentials: " + e.getMessage());
+        }
+    }
+
+    public void showRegisterDialog() {
+        Dialog registerDialog = new Dialog(this);
+        registerDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        RegristrationDialogBinding dialogBinding = RegristrationDialogBinding.inflate(getLayoutInflater());
+        registerDialog.setContentView(dialogBinding.getRoot());
+        WindowManager.LayoutParams params = registerDialog.getWindow().getAttributes();
+        params.width = (int) (getResources().getDisplayMetrics().widthPixels * 0.95);
+        registerDialog.getWindow().setAttributes(params);
+        registerDialog.setCancelable(false);
+        dialogBinding.register.setOnClickListener(view -> {
+
+            firstName = dialogBinding.firstnameText.getText().toString();
+            lastName = dialogBinding.lastnameText.getText().toString();
+            email = dialogBinding.emailText.getText().toString();
+            userName = dialogBinding.usernameText.getText().toString();
+            password = dialogBinding.passwordText.getText().toString();
+            if (firstName.isEmpty() || lastName.isEmpty() || email.isEmpty() ||
+                    userName.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!isValidEmail(email)) {
+                Toast.makeText(this, "Please enter a valid email address", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            new Thread(() -> {
+                Log.d(TAG, "Registration: " + firstName + " " + lastName + " " + email + " " + userName);
+                runOnUiThread(() -> {
+                    CreateUserAccountAPIVolley createUserAccountAPIVolley = new CreateUserAccountAPIVolley(MainActivity.this);
+                    createUserAccountAPIVolley.createUser(firstName, lastName, email, userName, password);
+
+                    Toast.makeText(MainActivity.this, "Registration in progress...", Toast.LENGTH_SHORT).show();
+                    registerDialog.dismiss();
+                });
+            }).start();
+        });
+
+        dialogBinding.cancel.setOnClickListener(view -> {
+            registerDialog.dismiss();
+            showLoginDialog();
+        });
+        registerDialog.show();
+
+    }
+
+    private boolean isValidEmail(String email) {
+        return !TextUtils.isEmpty(email) && Patterns.EMAIL_ADDRESS.matcher(email).matches();
+    }
+
+    public void handleCreateUserAccountSuccess(String firstName, String lastName,
+                                               String email, String userName) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("User Account Created");
+        builder.setMessage("First Name: " + firstName + "\n" +
+                "Last Name: " + lastName + "\n" +
+                "Email: " + email + "\n" +
+                "User Name: " + userName + "\n" +
+                "Password: " + this.password);
+        builder.setPositiveButton("OK", null);
+        builder.create().show();
+    }
+
+    public void handleCreateUserAccountFail(Object o) {
+        String errorMessage = "";
+        if (o != null) {
+            errorMessage = o.toString();
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("User Account Creation Failed");
+        builder.setIcon(R.drawable.american);
+        builder.setMessage(errorMessage);
+        builder.setPositiveButton("OK", null);
+        builder.create().show();
+    }
+
+    public void handleVerifyUserCredentialsSuccess(String userName, String firstName, String lastName) {
+        binding.main.setVisibility(View.VISIBLE);
+        this.userName = userName;
+        SharedPreferences.Editor editor = pref.edit();
+        editor.putBoolean(IS_LOGGED_IN, true);
+        editor.apply();
+        Log.d(TAG, "Login successful, userName saved: " + this.userName);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("User Verification Success");
+        builder.setIcon(R.drawable.american);
+        builder.setMessage("You have Successfully Logged In.");
+        builder.setPositiveButton("OK", null);
+        builder.create().show();
+    }
+
+    public void handleVerifyUserCredentialsFail() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("User Credentials Verification Failed");
+        builder.setMessage("Invalid User Name or Password");
+        builder.setPositiveButton("OK", null);
+        builder.create().show();
     }
 
     private void showAccountPopup() {
@@ -108,10 +309,21 @@ public class MainActivity extends AppCompatActivity {
         MenuInflater inflater = popupMenu.getMenuInflater();
         inflater.inflate(R.menu.account_menu, popupMenu.getMenu());
 
+        MenuItem userMenuItem = popupMenu.getMenu().findItem(R.id.user_id);
+        if (userName != null && !userName.isEmpty()) {
+            userMenuItem.setTitle("Username: " + userName);
+        } else {
+            userMenuItem.setTitle("Guest Account");
+        }
+
         popupMenu.setOnMenuItemClickListener(item -> {
 
             if (item.getItemId() == R.id.user_id) {
-                showUserId();
+                if (userName != null && !userName.isEmpty()) {
+                    Toast.makeText(this, "Username: " + userName, Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "Username not available", Toast.LENGTH_LONG).show();
+                }
             } else {
                 performLogout();
 
@@ -122,9 +334,8 @@ public class MainActivity extends AppCompatActivity {
         popupMenu.show();
     }
     private void loadHardcodedCuisines() {
-        cuisineInfoList.clear();
 
-        // Create a map of cuisine names to drawable resource IDs
+        cuisineInfoList.clear();
         Map<String, Integer> cuisineImages = new HashMap<>();
         cuisineImages.put("African", R.drawable.african);
         cuisineImages.put("American", R.drawable.american);
@@ -163,8 +374,6 @@ public class MainActivity extends AppCompatActivity {
 
         for (String cuisine : cuisines) {
             CuisineInfo cuisineInfo = new CuisineInfo(cuisine);
-
-            // Get image resource ID from map, or use default if not found
             Integer resId = cuisineImages.get(cuisine);
             if (resId != null) {
                 cuisineInfo.setImageResourceId(resId);
@@ -178,19 +387,14 @@ public class MainActivity extends AppCompatActivity {
         cuisineAdapter.notifyDataSetChanged();
     }
 
-
-    private void showUserId() {
-
-        String userId = "User12345"; // Replace with actual user ID from authentication
-        Toast.makeText(this, "User ID: " + userId, Toast.LENGTH_LONG).show();
-    }
-
     private void performLogout() {
         Toast.makeText(this, "Logging Out...", Toast.LENGTH_SHORT).show();
-        Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
+        binding.main.setVisibility(View.GONE);
+        SharedPreferences.Editor editor = pref.edit();
+        editor.putBoolean(IS_LOGGED_IN, false);
+        editor.apply();
+        showLoginDialog();
+        Toast.makeText(this, "Logged Out Successfully...", Toast.LENGTH_SHORT).show();
     }
 
 }

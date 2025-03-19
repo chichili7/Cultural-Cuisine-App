@@ -41,15 +41,11 @@ public class FavoritesAdapter extends RecyclerView.Adapter<FavoritesViewHolder> 
     public void onBindViewHolder(@NonNull FavoritesViewHolder holder, int position) {
         RecipeInfo recipeInfo = favoriteRecipes.get(position);
         holder.binding.tvRecipeName.setText(recipeInfo.getTitle());
-
-        // Load image
         Picasso.get()
                 .load(recipeInfo.getImageUrl())
                 .fit()
                 .centerCrop()
                 .into(holder.binding.ivRecipeImage);
-
-        // Always show filled heart in favorites
         holder.binding.btnFavorite.setImageResource(R.drawable.baseline_favorite_24);
 
         holder.itemView.setOnClickListener(v -> {
@@ -57,21 +53,14 @@ public class FavoritesAdapter extends RecyclerView.Adapter<FavoritesViewHolder> 
             intent.putExtra("RECIPE_ID", recipeInfo.getRecipeId());
             favoritesActivity.startActivity(intent);
         });
-
-        // Set click listener to remove from favorites
         holder.binding.btnFavorite.setOnClickListener(v -> {
-            // Remove from SharedPreferences
             SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.remove("recipe_" + recipeInfo.getTitle());
             editor.putBoolean(recipeInfo.getTitle(), false);
             editor.apply();
-
-            // Remove from list and update adapter
             favoriteRecipes.remove(position);
             notifyItemRemoved(position);
             notifyItemRangeChanged(position, favoriteRecipes.size());
-
-            // Show empty state if needed
             if (favoriteRecipes.isEmpty()) {
                 favoritesActivity.findViewById(R.id.tv_no_favorites).setVisibility(View.VISIBLE);
             }

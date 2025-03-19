@@ -1,83 +1,88 @@
 package com.example.culturalcuisineapp;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.squareup.picasso.Picasso;
-
 import java.util.List;
-import java.util.Locale;
 
-public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.RestaurantViewHolder> {
-    private List<Restaurant> restaurantList;
+public class RestaurantAdapter extends RecyclerView.Adapter<RestaurantAdapter.ViewHolder> {
     private Context context;
+    private List<Restaurant> restaurants;
 
-    public RestaurantAdapter(Context context, List<Restaurant> restaurantList) {
+    public RestaurantAdapter(Context context, List<Restaurant> restaurants) {
         this.context = context;
-        this.restaurantList = restaurantList;
+        this.restaurants = restaurants;
     }
 
     @NonNull
     @Override
-    public RestaurantViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_restaurant, parent, false);
-        return new RestaurantViewHolder(view);
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(context).inflate(R.layout.item_restaurant, parent, false);
+        return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull RestaurantViewHolder holder, int position) {
-        Restaurant restaurant = restaurantList.get(position);
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        Restaurant restaurant = restaurants.get(position);
 
-        holder.tvRestaurantName.setText(restaurant.getName());
-        holder.tvRestaurantAddress.setText(restaurant.getAddress());
-
-        // Format distance
-        double distanceInKm = restaurant.getDistance() / 1000;
-        String formattedDistance;
-        if (distanceInKm < 1) {
-            formattedDistance = String.format(Locale.getDefault(), "%.0f m", restaurant.getDistance());
+        holder.tvName.setText(restaurant.getName());
+        if (restaurant.getCuisine() != null && !restaurant.getCuisine().isEmpty()) {
+            holder.tvCuisine.setVisibility(View.VISIBLE);
+            holder.tvCuisine.setText("Cuisine: " + restaurant.getCuisine());
         } else {
-            formattedDistance = String.format(Locale.getDefault(), "%.1f km", distanceInKm);
+            holder.tvCuisine.setVisibility(View.GONE);
         }
-        holder.tvRestaurantDistance.setText(formattedDistance + " away");
-
-        // Load image
-        if (restaurant.getPhotoUrl() != null && !restaurant.getPhotoUrl().isEmpty()) {
-            Picasso.get()
-                    .load(restaurant.getPhotoUrl())
-                    .resize(300,300)
-                    .centerCrop()
-                    .into(holder.ivRestaurantImage);
+        if (restaurant.getAddress() != null && !restaurant.getAddress().isEmpty()) {
+            holder.tvAddress.setText(restaurant.getAddress());
         } else {
-//            holder.ivRestaurantImage.setImageResource(R.drawable.placeholder_restaurant);
+            holder.tvAddress.setText("Address not available");
+        }
+        holder.tvDistance.setText(String.format("%.1f meters away", restaurant.getDistance()));
+
+        holder.itemView.setOnClickListener(v -> {
+            openLocationInMap(restaurant);
+        });
+    }
+
+    private void openLocationInMap(Restaurant restaurant) {
+
+        Uri gmmIntentUri = Uri.parse("geo:" + restaurant.getLatitude() + "," +
+                restaurant.getLongitude() + "?q=" + Uri.encode(restaurant.getName()));
+        Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+        mapIntent.setPackage("com.google.android.apps.maps");
+        if (mapIntent.resolveActivity(context.getPackageManager()) != null) {
+            context.startActivity(mapIntent);
+        } else {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://www.openstreetmap.org/?mlat=" +
+                            restaurant.getLatitude() + "&mlon=" + restaurant.getLongitude() +
+                            "&zoom=18"));
+            context.startActivity(browserIntent);
         }
     }
 
     @Override
     public int getItemCount() {
-        return restaurantList.size();
+        return restaurants.size();
     }
 
-    static class RestaurantViewHolder extends RecyclerView.ViewHolder {
-        ImageView ivRestaurantImage;
-        TextView tvRestaurantName;
-        TextView tvRestaurantAddress;
-        TextView tvRestaurantDistance;
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        TextView tvName, tvCuisine, tvAddress, tvDistance;
 
-        public RestaurantViewHolder(@NonNull View itemView) {
+        public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            ivRestaurantImage = itemView.findViewById(R.id.ivRestaurantImage);
-            tvRestaurantName = itemView.findViewById(R.id.tvRestaurantName);
-            tvRestaurantAddress = itemView.findViewById(R.id.tvRestaurantAddress);
-            tvRestaurantDistance = itemView.findViewById(R.id.tvRestaurantDistance);
+            tvName = itemView.findViewById(R.id.tv_restaurant_name);
+            tvCuisine = itemView.findViewById(R.id.tv_restaurant_cuisine);
+            tvAddress = itemView.findViewById(R.id.tv_restaurant_address);
+            tvDistance = itemView.findViewById(R.id.tv_restaurant_distance);
         }
     }
 }

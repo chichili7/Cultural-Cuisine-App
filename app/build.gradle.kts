@@ -46,6 +46,7 @@ dependencies {
     implementation(libs.gms.play.services.maps)
     implementation(libs.gms.play.services.location)
     implementation(libs.google.places)
+    implementation(libs.okhttp)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

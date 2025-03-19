@@ -1,31 +1,36 @@
 package com.example.culturalcuisineapp;
 
 public class Restaurant {
-    private String name;
-    private String address;
-    private String photoUrl;
-    private double distance; // in meters
 
-    public Restaurant(String name, String address, String photoUrl, double distance) {
+
+    private String id;
+    private String name;
+    private String amenity;
+    private String cuisine;
+    private String address;
+    private double latitude;
+    private double longitude;
+    private float distance;
+
+    public Restaurant(String id, String name, String amenity, String cuisine,
+                      String address, double latitude, double longitude, float distance) {
+        this.id = id;
         this.name = name;
+        this.amenity = amenity;
+        this.cuisine = cuisine;
         this.address = address;
-        this.photoUrl = photoUrl;
+        this.latitude = latitude;
+        this.longitude = longitude;
         this.distance = distance;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public String getPhotoUrl() {
-        return photoUrl;
-    }
-
-    public double getDistance() {
-        return distance;
-    }
+    // Getters
+    public String getId() { return id; }
+    public String getName() { return name; }
+    public String getAmenity() { return amenity; }
+    public String getCuisine() { return cuisine; }
+    public String getAddress() { return address; }
+    public double getLatitude() { return latitude; }
+    public double getLongitude() { return longitude; }
+    public float getDistance() { return distance; }
 }
